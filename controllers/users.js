@@ -16,8 +16,10 @@ exports.createNewUser = (req, res) => {
       `SELECT email FROM users WHERE email = ?`,
       [email],
       (err, data) => {
-        if (!res.headersSent) {
-          return res.status(500).json({ error: "Database query error" });
+        if (err) {
+          if (!res.headersSent) {
+            return res.status(400).json({ "Database query error": err });
+          }
         }
 
         if (data.length > 0) {
@@ -105,8 +107,19 @@ exports.login = (req, res) => {
           })
           .status(200)
           .json("User logged in successfully!");
+        console.log("access token", token);
       }
-      if (!res.headersSent) return res.status(200).json("Login Successful");
+      const q = "UPDATE users SET access_token = ? WHERE email = ?";
+      db.query(q, [token, email], (err, data) => {
+        if (err) {
+          return res.status(400).json("Can't update user db");
+        }
+        if (data) {
+          return res.status(200).status("Added Access token to the user");
+        }
+      });
+      if (!res.headersSent)
+        return res.status(200).json("Login Successful", data);
     });
   } catch (error) {
     if (!res.headersSent) {
@@ -124,6 +137,8 @@ exports.logout = (req, res) => {
   try {
     const user = `SELECT * FROM users WHERE id = ?`;
     db.query(user, [userId], (err, data) => {
+      console.log("DATA FROM UPDATE Q", data);
+      // if(data[5] === req.cookies.access_)
       if (err) {
         if (!res.headersSent)
           return res.status(400).json({ "Error while fetching data: ": err });
